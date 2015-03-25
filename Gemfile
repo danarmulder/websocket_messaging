@@ -31,6 +31,11 @@ gem 'bcrypt', '~> 3.1.7'
 
 gem 'semantic-ui-sass', github: 'doabit/semantic-ui-sass', branch: 'v1.0beta'
 
+gem 'thin'
+gem 'em-websocket'
+gem 'dotenv-rails'
+
+
 # Use unicorn as the app server
 # gem 'unicorn'
 
