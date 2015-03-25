@@ -1,5 +1,9 @@
 <div id="chat-log">
   <input type="text" id="message">
+  <% @messages.each do |message| %>
+    <%= message.body %>
+  <% end %>
+
   <button id="disconnect">Disconnect</button>
 </div>
 <script>
@@ -8,7 +12,7 @@
   }
   var key = '<%= @conv_id %>';
   var socket, host;
-  host = "ws://localhost:3001";
+  host = "ws://localhost:3001?"+ key;
 
   function connect() {
     try {

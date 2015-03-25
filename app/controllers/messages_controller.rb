@@ -7,9 +7,11 @@ class MessagesController < ApplicationController
 
 
   EM::WebSocket.start(:host => '0.0.0.0', :port => '3001') do |ws|
+    crypt = ActiveSupport::MessageEncryptor.new(ENV['SECRET_KEY_BASE'])
     ws.onopen do |handshake|
-      @clients << ws
-      ws.send "Connected to #{handshake.path}."
+      conversation_data = crypt.decrypt_and_verify(handshake.query_string)
+      @clients << {socket: ws, conv_info: conversation_data}
+      ws.send Conversation.find(conversation_data[:conversation_id]).messages.last(10).to_json
     end
 
     ws.onclose do
@@ -18,23 +20,31 @@ class MessagesController < ApplicationController
     end
 
     ws.onmessage do |data|
-      crypt = ActiveSupport::MessageEncryptor.new(ENV['SECRET_KEY_BASE'])
       data = data.split('L56HTY9999')
       body = data[0]
       key = data[-1]
       conversation = crypt.decrypt_and_verify(key)
-      @clients.each do |socket|
-        socket.send body
-        p socket
+      new_message = Message.new(body: body, user_id: conversation[:user_id], conversation_id: conversation[:conversation_id])
+      if new_message.save
+        @clients.each do |socket|
+          if socket[:conv_info][:conversation_id] == conversation[:conversation_id]
+            socket[:socket].send new_message.to_json
+          end
+        end
+      else
+        if socket[:conv_info][:user_id] == conversation[:user_id]
+          socket[:socket].send new_message.errors.to_json
+        end
       end
-      Message.new(body: body, user_id: conversation[:user], conversation_id: conversation[:conversation]).save
     end
 
   end
 
   def index
     crypt = ActiveSupport::MessageEncryptor.new(ENV['SECRET_KEY_BASE'])
-    @conv_id = crypt.encrypt_and_sign({:user=>current_user.id,:conversation=>@conversation.id})
+    @conv_id = crypt.encrypt_and_sign({:user_id=>current_user.id,:conversation_id=>@conversation.id})
+    @conversation.recipient.id
+    @conversation.sender.id
     @messages = @conversation.messages
     if @messages.length > 10
       @over_ten = true
