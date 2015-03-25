@@ -12,7 +12,7 @@
   }
   var key = '<%= @conv_id %>';
   var socket, host;
-  host = "ws://localhost:3001?"+ key;
+  host = "ws://<%= ENV['WEBSOCKET_HOST'] %>:<%= ENV['WEBSOCKET_PORT']%>?"+ key;
 
   function connect() {
     try {

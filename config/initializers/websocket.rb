@@ -1,5 +1,5 @@
 EM.run do
-  EM::WebSocket.start(:host => '0.0.0.0', :port => '3030') do |ws|
+  EM::WebSocket.start(host: ENV['WEBSOCKET_HOST'], port: ENV['WEBSOCKET_PORT']) do |ws|
     clients = []
 
     crypt = ActiveSupport::MessageEncryptor.new(ENV['SECRET_KEY_BASE'])
