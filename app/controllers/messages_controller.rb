@@ -2,21 +2,20 @@ class MessagesController < ApplicationController
   before_action do
     @conversation = Conversation.find(params[:conversation_id])
   end
-
+  @clients = []
   EM.run do
     EM::WebSocket.start(host: ENV['WEBSOCKET_HOST'], port: ENV['WEBSOCKET_PORT']) do |ws|
-      clients = []
       crypt = ActiveSupport::MessageEncryptor.new(ENV['SECRET_KEY_BASE'])
       p crypt
       ws.onopen do |handshake|
         conversation_data = crypt.decrypt_and_verify(handshake.query_string)
-        clients << {socket: ws, conv_info: conversation_data}
+        @clients << {socket: ws, conv_info: conversation_data}
         ws.send Conversation.find(conversation_data[:conversation_id]).messages.last(10).to_json
       end
 
       ws.onclose do
         ws.send "Closed."
-        clients.delete ws
+        @clients.delete ws
       end
 
       ws.onmessage do |data|
@@ -26,7 +25,7 @@ class MessagesController < ApplicationController
         conversation = crypt.decrypt_and_verify(key)
         new_message = Message.new(body: body, user_id: conversation[:user_id], conversation_id: conversation[:conversation_id])
         if new_message.save
-          clients.each do |socket|
+          @clients.each do |socket|
             if socket[:conv_info][:conversation_id] == conversation[:conversation_id]
               socket[:socket].send new_message.to_json
             end
